@@ -1,0 +1,28 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model Analysis {
+  id              Int      @id @default(autoincrement())
+  filename        String
+  candidateName   String?
+  email           String?
+  phone           String?
+  atsScore        Int      @map("ats_score")
+  matchScore      Int?     @map("match_score")
+  extractedSkills Json     @map("extracted_skills")
+  missingSkills   Json     @map("missing_skills")
+  categoryScores  Json     @map("category_scores")
+  parsedResume    Json     @map("parsed_resume")
+  aiFeedback      Json     @map("ai_feedback")
+  jobDescription  String?  @map("job_description")
+  rawText         String   @map("raw_text")
+  createdAt       DateTime @default(now()) @map("created_at")
+
+  @@map("analyses")
+}
