@@ -54,6 +54,7 @@ export async function POST(request: Request) {
 
     const parsedResume = parseResumeText(rawText);
     const score = calculateAtsScore(parsedResume, rawText, parsedForm.jobDescription);
+
     const aiFeedback = await generateAiFeedback({
       rawText,
       parsedResume,
@@ -86,7 +87,10 @@ export async function POST(request: Request) {
       matchedKeywords: score.matchedKeywords
     });
   } catch (error) {
-    console.error(error);
-    return NextResponse.json({ error: "Analysis failed. Check your file, database, and Gemini configuration." }, { status: 500 });
+    console.error("Analysis Error:", error);
+    return NextResponse.json({ 
+      error: "Analysis failed. Check your file, database, and Gemini configuration.",
+      details: error instanceof Error ? error.message : String(error)
+    }, { status: 500 });
   }
 }
