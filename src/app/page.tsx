@@ -23,6 +23,7 @@ import {
 import { DashboardCharts } from "@/components/DashboardCharts";
 import { ReportButton } from "@/components/ReportButton";
 import { ScoreRing } from "@/components/ScoreRing";
+import { Toast } from "@/components/Toast";
 import { MAX_FILE_SIZE, SAMPLE_JOB_DESCRIPTION } from "@/lib/constants";
 import type { AnalysisPayload } from "@/lib/types";
 
@@ -35,6 +36,11 @@ export default function Home() {
   const [matching, setMatching] = useState(false);
   const [progressMode, setProgressMode] = useState<"analysis" | "match" | null>(null);
   const [error, setError] = useState("");
+  const [toast, setToast] = useState<{ message: string; type: "success" | "error"; isVisible: boolean }>({
+    message: "",
+    type: "success",
+    isVisible: false
+  });
 
   const loadHistory = useCallback(async () => {
     const response = await fetch("/api/analyses");
@@ -81,6 +87,7 @@ export default function Home() {
       if (!response.ok) throw new Error(payload.error || "Analysis failed.");
       setAnalysis(payload);
       await loadHistory();
+      setToast({ message: "Analysis complete! Check your scores below.", type: "success", isVisible: true });
       setTimeout(() => document.getElementById("analysis")?.scrollIntoView({ behavior: "smooth", block: "start" }), 120);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Analysis failed.");
@@ -105,6 +112,7 @@ export default function Home() {
       if (!response.ok) throw new Error(payload.error || "Job matching failed.");
       setAnalysis(payload);
       await loadHistory();
+      setToast({ message: "Recalculation successful!", type: "success", isVisible: true });
       setTimeout(() => document.getElementById("analysis")?.scrollIntoView({ behavior: "smooth", block: "start" }), 120);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Job matching failed.");
@@ -366,6 +374,13 @@ export default function Home() {
           <p className="mx-auto mt-4 max-w-2xl text-zinc-400">Upload, score, match, improve, and export a professional report from one premium AI dashboard.</p>
         </div>
       </footer>
+
+      <Toast
+        message={toast.message}
+        type={toast.type}
+        isVisible={toast.isVisible}
+        onClose={() => setToast((prev) => ({ ...prev, isVisible: false }))}
+      />
     </main>
   );
 }
