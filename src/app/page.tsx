@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useState } from "react";
 import { motion } from "framer-motion";
 import { useDropzone } from "react-dropzone";
 import {
@@ -11,7 +11,6 @@ import {
   CheckCircle2,
   FileText,
   Gauge,
-  History,
   Layers3,
   Loader2,
   ScanSearch,
@@ -32,7 +31,6 @@ export default function Home() {
   const [file, setFile] = useState<File | null>(null);
   const [jobDescription, setJobDescription] = useState(SAMPLE_JOB_DESCRIPTION);
   const [analysis, setAnalysis] = useState<AnalysisPayload | null>(null);
-  const [history, setHistory] = useState<AnalysisPayload[]>([]);
   const [loading, setLoading] = useState(false);
   const [matching, setMatching] = useState(false);
   const [progressMode, setProgressMode] = useState<"analysis" | "match" | null>(null);
@@ -45,15 +43,6 @@ export default function Home() {
   const [coverLetter, setCoverLetter] = useState<string | null>(null);
   const [isCoverLetterOpen, setIsCoverLetterOpen] = useState(false);
   const [generatingLetter, setGeneratingLetter] = useState(false);
-
-  const loadHistory = useCallback(async () => {
-    const response = await fetch("/api/analyses");
-    if (response.ok) setHistory(await response.json());
-  }, []);
-
-  useEffect(() => {
-    loadHistory().catch(() => undefined);
-  }, [loadHistory]);
 
   const onDrop = useCallback((acceptedFiles: File[]) => {
     setError("");
@@ -90,7 +79,6 @@ export default function Home() {
       const payload = await response.json();
       if (!response.ok) throw new Error(payload.error || "Analysis failed.");
       setAnalysis(payload);
-      await loadHistory();
       setToast({ message: "Analysis complete! Check your scores below.", type: "success", isVisible: true });
       setTimeout(() => document.getElementById("analysis")?.scrollIntoView({ behavior: "smooth", block: "start" }), 120);
     } catch (err) {
@@ -120,7 +108,6 @@ export default function Home() {
       const payload = await response.json();
       if (!response.ok) throw new Error(payload.error || "Job matching failed.");
       setAnalysis(payload);
-      await loadHistory();
       setToast({ message: "Recalculation successful!", type: "success", isVisible: true });
       setTimeout(() => document.getElementById("analysis")?.scrollIntoView({ behavior: "smooth", block: "start" }), 120);
     } catch (err) {
@@ -158,7 +145,7 @@ export default function Home() {
     }
   }
 
-  const current = useMemo(() => analysis ?? history[0] ?? null, [analysis, history]);
+  const current = analysis;
 
   return (
     <main className="min-h-screen overflow-hidden bg-[#0A0A0A] text-white">
@@ -180,7 +167,7 @@ export default function Home() {
             <a className="transition hover:text-white" href="#upload">Start here</a>
             <a className="transition hover:text-white" href="#analysis">Results</a>
             <a className="transition hover:text-white" href="#matching">Rematch</a>
-            <a className="transition hover:text-white" href="#analytics">History</a>
+            <a className="transition hover:text-white" href="#analytics">Analytics</a>
           </div>
           <button onClick={() => document.getElementById("upload")?.scrollIntoView({ behavior: "smooth" })} className="rounded-xl border border-pink-300/20 bg-white px-4 py-2 text-sm font-black text-black shadow-[0_0_34px_rgba(236,72,153,0.16)] transition hover:-translate-y-0.5 hover:bg-pink-200">
             Go to Step 1
@@ -387,30 +374,9 @@ export default function Home() {
       </section>
 
       <section id="analytics" className="mx-auto max-w-7xl px-5 py-10">
-        <SectionTitle eyebrow="Analytics page" title="Signal-rich charts and saved analysis history." />
-        <div className="mt-8 grid gap-5 xl:grid-cols-[1fr_360px]">
+        <SectionTitle eyebrow="Analytics page" title="Signal-rich charts and profile insights." />
+        <div className="mt-8">
           <div>{current ? <DashboardCharts analysis={current} /> : <EmptyDashboard compact />}</div>
-          <GlassCard>
-            <div className="mb-4 flex items-center gap-3">
-              <History className="text-cyan-200" />
-              <h3 className="text-xl font-black">Saved analyses</h3>
-            </div>
-            <div className="no-scrollbar max-h-[520px] space-y-2 overflow-auto pr-1">
-              {history.length ? (
-                history.map((item) => (
-                  <button key={item.id} onClick={() => setAnalysis(item)} className="group w-full rounded-2xl border border-white/10 bg-white/[0.04] p-4 text-left transition hover:-translate-y-0.5 hover:border-cyan-300/30 hover:bg-cyan-300/10">
-                    <div className="flex items-center justify-between gap-3">
-                      <p className="truncate font-black">{item.parsedResume.name}</p>
-                      <span className="rounded-full border border-cyan-300/20 bg-cyan-300/10 px-2.5 py-1 text-xs font-black text-cyan-100">{item.atsScore}</span>
-                    </div>
-                    <p className="mt-1 truncate text-xs text-zinc-500">{item.filename} / saved report</p>
-                  </button>
-                ))
-              ) : (
-                <p className="rounded-2xl border border-dashed border-white/10 bg-white/[0.03] p-5 text-sm text-zinc-500">No saved analyses yet.</p>
-              )}
-            </div>
-          </GlassCard>
         </div>
       </section>
 
@@ -445,7 +411,7 @@ function AnalysisProgress({ mode }: { mode: "analysis" | "match" }) {
           "Extracting skills and sections",
           "Calculating ATS and job match scores",
           "Generating AI recommendations",
-          "Saving report to database"
+          "Preparing dashboard view"
         ]
       : ["Reading saved resume", "Comparing new job description", "Updating match score", "Refreshing AI suggestions"];
 
