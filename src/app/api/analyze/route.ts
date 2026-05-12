@@ -52,38 +52,42 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "Could not extract enough resume text from this file." }, { status: 422 });
     }
 
-    const parsedResume = parseResumeText(rawText);
-    const score = calculateAtsScore(parsedResume, rawText, parsedForm.jobDescription);
+    const sanitize = (str: string) => str.replace(/\0/g, "");
+    const cleanRawText = sanitize(rawText);
+    const cleanJobDescription = parsedForm.jobDescription ? sanitize(parsedForm.jobDescription) : null;
+
+    const parsedResume = parseResumeText(cleanRawText);
+    const score = calculateAtsScore(parsedResume, cleanRawText, cleanJobDescription || undefined);
 
     const aiFeedback = await generateAiFeedback({
-      rawText,
+      rawText: cleanRawText,
       parsedResume,
       atsScore: score.atsScore,
       categoryScores: score.categoryScores,
       missingSkills: score.missingSkills,
-      jobDescription: parsedForm.jobDescription
+      jobDescription: cleanJobDescription || undefined
     });
 
-    const analysis = await prisma.analysis.create({
-      data: {
-        filename,
-        candidateName: parsedResume.name,
-        email: parsedResume.email || null,
-        phone: parsedResume.phone || null,
-        atsScore: score.atsScore,
-        matchScore: score.matchScore,
-        extractedSkills: parsedResume.skills,
-        missingSkills: score.missingSkills,
-        categoryScores: score.categoryScores,
-        parsedResume,
-        aiFeedback,
-        jobDescription: parsedForm.jobDescription || null,
-        rawText
-      }
-    });
+    const mockAnalysis = {
+      id: Date.now(),
+      filename,
+      candidateName: parsedResume.name,
+      email: parsedResume.email || null,
+      phone: parsedResume.phone || null,
+      atsScore: score.atsScore,
+      matchScore: score.matchScore,
+      extractedSkills: parsedResume.skills,
+      missingSkills: score.missingSkills,
+      categoryScores: score.categoryScores,
+      parsedResume,
+      aiFeedback,
+      jobDescription: cleanJobDescription,
+      rawText: cleanRawText,
+      createdAt: new Date()
+    };
 
     return NextResponse.json({
-      ...toAnalysisPayload(analysis),
+      ...toAnalysisPayload(mockAnalysis as any),
       matchedKeywords: score.matchedKeywords
     });
   } catch (error) {

@@ -1,4 +1,4 @@
-export const GEMINI_MODEL = "gemini-1.5-flash";
+export const GEMINI_MODEL = "gemini-2.5-flash";
 export const MAX_FILE_SIZE = 5 * 1024 * 1024;
 
 export const SKILL_KEYWORDS = [

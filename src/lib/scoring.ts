@@ -4,19 +4,10 @@ import type { CategoryScores, ParsedResume } from "@/lib/types";
 
 const ACTION_WORDS = ["built", "created", "led", "improved", "optimized", "reduced", "increased", "launched", "designed", "developed"];
 const STOP_WORDS = new Set([
-  "with",
-  "from",
-  "this",
-  "that",
-  "your",
-  "have",
-  "will",
-  "resume",
-  "experience",
-  "need",
-  "include",
-  "required",
-  "skills"
+  "with", "from", "this", "that", "your", "have", "will", "resume", "experience", 
+  "need", "include", "required", "skills", "education", "professional", "summary",
+  "contact", "phone", "email", "address", "work", "history", "present", "about",
+  "using", "during", "within", "across", "other"
 ]);
 
 function includesTerm(text: string, term: string) {
@@ -56,14 +47,29 @@ export function calculateMatch(resumeText: string, resumeSkills: string[], jobDe
   }
 
   const jobKeywords = extractKeywords(jobDescription);
+  const jobSkills = jobKeywords.filter((k) => SKILL_KEYWORDS.some((s) => s.toLowerCase() === k.toLowerCase()));
+  
   const matchedKeywords = jobKeywords.filter((keyword) => includesTerm(resumeText, keyword));
+  const matchedSkills = matchedKeywords.filter((k) => SKILL_KEYWORDS.some((s) => s.toLowerCase() === k.toLowerCase()));
+  
   const missingSkills = uniqueCaseInsensitive(
-    jobKeywords.filter((keyword) => !includesTerm(resumeText, keyword) && SKILL_KEYWORDS.some((skill) => skill.toLowerCase() === keyword.toLowerCase()))
-  )
-    .slice(0, 12);
-  const score = jobKeywords.length ? clamp((matchedKeywords.length / jobKeywords.length) * 100) : 0;
+    jobSkills.filter((skill) => !includesTerm(resumeText, skill))
+  ).slice(0, 12);
 
-  return { matchScore: score, missingSkills, matchedKeywords: matchedKeywords.slice(0, 20), jobKeywords };
+  let finalScore = 0;
+  if (jobSkills.length > 0) {
+    // Technical job: Skills are priority
+    const skillScore = (matchedSkills.length / jobSkills.length) * 100;
+    const generalScore = jobKeywords.length ? (matchedKeywords.length / jobKeywords.length) * 100 : 0;
+    finalScore = skillScore * 0.8 + generalScore * 0.2;
+  } else {
+    // Non-technical job: Rely on keyword density but with a penalty if the resume is too technical for the role
+    const generalScore = jobKeywords.length ? (matchedKeywords.length / jobKeywords.length) * 100 : 0;
+    const techBias = (resumeSkills.length / 15) * 100; // How "technical" is the resume?
+    finalScore = Math.max(0, generalScore - (techBias > 50 ? 20 : 0)); // Penalty if resume is technical but job isn't
+  }
+
+  return { matchScore: Math.round(clamp(finalScore)), missingSkills, matchedKeywords: matchedKeywords.slice(0, 20), jobKeywords };
 }
 
 export function calculateAtsScore(parsed: ParsedResume, rawText: string, jobDescription?: string) {

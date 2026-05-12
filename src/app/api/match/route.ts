@@ -12,37 +12,46 @@ const bodySchema = z.object({
 
 export async function POST(request: Request) {
   try {
-    const body = bodySchema.parse(await request.json());
-    const analysis = await prisma.analysis.findUnique({ where: { id: body.analysisId } });
+    const body = await request.json();
+    const { analysisId, jobDescription, rawText: providedRawText, parsedResume: providedParsedResume } = body;
 
-    if (!analysis) {
-      return NextResponse.json({ error: "Analysis not found." }, { status: 404 });
+    let rawText = providedRawText;
+    let parsedResume = providedParsedResume;
+
+    if (!rawText || !parsedResume) {
+      const analysis = await prisma.analysis.findUnique({ where: { id: analysisId } });
+      if (!analysis) {
+        return NextResponse.json({ error: "Analysis data missing or not found." }, { status: 404 });
+      }
+      rawText = analysis.rawText;
+      parsedResume = analysis.parsedResume;
     }
 
-    const parsedResume = analysis.parsedResume as ReturnType<typeof toAnalysisPayload>["parsedResume"];
-    const score = calculateAtsScore(parsedResume, analysis.rawText, body.jobDescription);
+    const score = calculateAtsScore(parsedResume, rawText, jobDescription);
     const aiFeedback = await generateAiFeedback({
-      rawText: analysis.rawText,
+      rawText,
       parsedResume,
       atsScore: score.atsScore,
       categoryScores: score.categoryScores,
       missingSkills: score.missingSkills,
-      jobDescription: body.jobDescription
+      jobDescription
     });
 
-    const updated = await prisma.analysis.update({
-      where: { id: body.analysisId },
-      data: {
-        atsScore: score.atsScore,
-        matchScore: score.matchScore,
-        missingSkills: score.missingSkills,
-        categoryScores: score.categoryScores,
-        aiFeedback,
-        jobDescription: body.jobDescription
-      }
-    });
+    const result = {
+      id: analysisId || Date.now(),
+      filename: "recalculated-analysis",
+      rawText,
+      parsedResume,
+      atsScore: score.atsScore,
+      matchScore: score.matchScore,
+      missingSkills: score.missingSkills,
+      categoryScores: score.categoryScores,
+      aiFeedback,
+      jobDescription,
+      createdAt: new Date()
+    };
 
-    return NextResponse.json({ ...toAnalysisPayload(updated), matchedKeywords: score.matchedKeywords });
+    return NextResponse.json({ ...toAnalysisPayload(result as any), matchedKeywords: score.matchedKeywords });
   } catch (error) {
     console.error(error);
     return NextResponse.json({ error: "Job matching failed." }, { status: 500 });

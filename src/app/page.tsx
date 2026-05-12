@@ -24,6 +24,7 @@ import { DashboardCharts } from "@/components/DashboardCharts";
 import { ReportButton } from "@/components/ReportButton";
 import { ScoreRing } from "@/components/ScoreRing";
 import { Toast } from "@/components/Toast";
+import { CoverLetterModal } from "@/components/CoverLetterModal";
 import { MAX_FILE_SIZE, SAMPLE_JOB_DESCRIPTION } from "@/lib/constants";
 import type { AnalysisPayload } from "@/lib/types";
 
@@ -41,6 +42,9 @@ export default function Home() {
     type: "success",
     isVisible: false
   });
+  const [coverLetter, setCoverLetter] = useState<string | null>(null);
+  const [isCoverLetterOpen, setIsCoverLetterOpen] = useState(false);
+  const [generatingLetter, setGeneratingLetter] = useState(false);
 
   const loadHistory = useCallback(async () => {
     const response = await fetch("/api/analyses");
@@ -106,7 +110,12 @@ export default function Home() {
       const response = await fetch("/api/match", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ analysisId: analysis.id, jobDescription })
+        body: JSON.stringify({ 
+          analysisId: analysis.id, 
+          jobDescription,
+          rawText: analysis.rawText,
+          parsedResume: analysis.parsedResume
+        })
       });
       const payload = await response.json();
       if (!response.ok) throw new Error(payload.error || "Job matching failed.");
@@ -119,6 +128,33 @@ export default function Home() {
     } finally {
       setMatching(false);
       setProgressMode(null);
+    }
+  }
+
+  async function generateLetter() {
+    if (!analysis?.id) return;
+    setGeneratingLetter(true);
+    setIsCoverLetterOpen(true);
+    setCoverLetter(null);
+    try {
+      const response = await fetch("/api/cover-letter", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ 
+          analysisId: analysis.id, 
+          jobDescription,
+          resumeText: analysis.rawText,
+          name: analysis.parsedResume.name
+        })
+      });
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.error);
+      setCoverLetter(data.coverLetter);
+    } catch (err) {
+      setError("Failed to generate cover letter.");
+      setIsCoverLetterOpen(false);
+    } finally {
+      setGeneratingLetter(false);
     }
   }
 
@@ -210,9 +246,9 @@ export default function Home() {
           </div>
 
           <div className="grid gap-4">
-            <FeatureCard icon={BrainCircuit} title="AI recommendations" text="AI generates weaknesses, rewrites, role alignment, and career advice." accent="pink" />
-            <FeatureCard icon={Gauge} title="ATS scoring" text="Weighted scoring for skills, keywords, structure, and experience relevance." />
-            <FeatureCard icon={BarChart3} title="Visual analytics" text="Dark transparent Recharts visuals for skills, radar, and match signals." />
+            <FeatureCard icon={BrainCircuit} title="Precision AI insights" text="Our AI identifies your competitive edges and provides specific edits to boost your resume's impact." accent="pink" />
+            <FeatureCard icon={Gauge} title="Strategic ATS scoring" text="An advanced engine that evaluates your fit against the same standards used by top tech companies." />
+            <FeatureCard icon={BarChart3} title="Profile analytics" text="Visualize your skill coverage and role alignment through interactive, high-fidelity dashboards." />
           </div>
         </motion.div>
       </section>
@@ -243,7 +279,7 @@ export default function Home() {
                 <UploadCloud size={38} />
               </div>
               <h2 className="mt-6 text-3xl font-black tracking-tight">{file ? file.name : "Drop your resume here"}</h2>
-              <p className="mx-auto mt-3 max-w-lg text-sm leading-7 text-zinc-400">PDF or DOCX, up to 5MB. The parser extracts text, structures sections, scores ATS quality, and stores the analysis in PostgreSQL.</p>
+              <p className="mx-auto mt-3 max-w-lg text-sm leading-7 text-zinc-400">Supports PDF and DOCX. Our AI instantly audits your background, identifies achievements, and prepares your secure analysis.</p>
               <div className="mt-7 rounded-2xl border border-white/10 bg-black/30 p-4">
                 <p className="mb-3 text-xs font-black uppercase tracking-[0.24em] text-cyan-200">Step 03 / Analyze</p>
                 <div className="flex flex-col justify-center gap-3 sm:flex-row">
@@ -277,7 +313,17 @@ export default function Home() {
                   <h2 className="mt-3 text-4xl font-black tracking-tight md:text-5xl">{current.parsedResume.name}</h2>
                   <p className="mt-3 text-sm text-zinc-400">{current.parsedResume.email || "No email detected"} / {current.parsedResume.phone || "No phone detected"}</p>
                 </div>
-                <ReportButton />
+                <div className="flex flex-wrap gap-3">
+                  <button
+                    onClick={generateLetter}
+                    disabled={generatingLetter}
+                    className="inline-flex items-center gap-2 rounded-xl border border-white/10 bg-violet-600 px-4 py-3 text-sm font-black text-white shadow-[0_0_34px_rgba(139,92,246,0.2)] transition hover:-translate-y-0.5 hover:bg-violet-500 disabled:opacity-50"
+                  >
+                    <WandSparkles size={17} />
+                    {generatingLetter ? "Generating..." : "AI Cover Letter"}
+                  </button>
+                  <ReportButton analysis={current} />
+                </div>
               </div>
             </div>
 
@@ -380,6 +426,12 @@ export default function Home() {
         type={toast.type}
         isVisible={toast.isVisible}
         onClose={() => setToast((prev) => ({ ...prev, isVisible: false }))}
+      />
+
+      <CoverLetterModal
+        content={coverLetter}
+        isOpen={isCoverLetterOpen}
+        onClose={() => setIsCoverLetterOpen(false)}
       />
     </main>
   );
