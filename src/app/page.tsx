@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useCallback, useState } from "react";
 import { motion } from "framer-motion";
 import { useDropzone } from "react-dropzone";
 import {
@@ -559,7 +559,7 @@ function EmptyDashboard({ compact = false }: { compact?: boolean }) {
           <Layers3 size={30} />
         </div>
         <h3 className="mt-6 text-3xl font-black">Run a scan to activate this dashboard.</h3>
-        <p className="mt-3 text-sm leading-7 text-zinc-400">Use the demo resume or upload a PDF/DOCX to unlock ATS scores, charts, AI recommendations, matching, history, and export.</p>
+        <p className="mt-3 text-sm leading-7 text-zinc-400">Use the demo resume or upload a PDF/DOCX to unlock ATS scores, charts, AI recommendations, matching, and export.</p>
       </div>
     </div>
   );
