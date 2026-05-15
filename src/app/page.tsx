@@ -75,7 +75,11 @@ export default function Home() {
         return;
       }
 
-      const response = await fetch("/api/analyze", { method: "POST", body });
+      const response = await fetch("/api/analyze", { 
+        method: "POST", 
+        headers: { "ngrok-skip-browser-warning": "true" },
+        body 
+      });
       const payload = await response.json();
       if (!response.ok) throw new Error(payload.error || "Analysis failed.");
       setAnalysis(payload);
@@ -97,7 +101,10 @@ export default function Home() {
     try {
       const response = await fetch("/api/match", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: { 
+          "Content-Type": "application/json",
+          "ngrok-skip-browser-warning": "true"
+        },
         body: JSON.stringify({ 
           analysisId: analysis.id, 
           jobDescription,
@@ -126,7 +133,10 @@ export default function Home() {
     try {
       const response = await fetch("/api/cover-letter", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: { 
+          "Content-Type": "application/json",
+          "ngrok-skip-browser-warning": "true"
+        },
         body: JSON.stringify({ 
           analysisId: analysis.id, 
           jobDescription,
